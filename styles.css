@@ -1,1 +1,22 @@
 /* Bytes assigned by Looty9397 */
+
+body {
+    background-color: #111;
+    font-family: Consolas, 'Courier New', monospace;
+    padding: 0px;
+    margin: 0px;
+    color: #ddd;
+}
+
+button {
+    background-color: inherit;
+    border-style: hidden;
+    padding: 10px 15px;
+    font-family: inherit;
+    font-weight: bold;
+    color: inherit;
+}
+
+button:hover {
+    background-color: #333;
+}
