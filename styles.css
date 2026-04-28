@@ -1,14 +1,29 @@
 /* Bytes assigned by Looty9397 */
 
+/* -- Tags -- */
+
 body {
     background-color: #111;
     font-family: Consolas, 'Courier New', monospace;
     padding: 0px;
     margin: 0px;
     color: #ddd;
+    text-align: center;
 }
 
-button {
+canvas {
+    border: #ddd solid 2px;
+    align-self: center;
+}
+
+/* -- Classes & Pseudoclasses -- */
+
+div.navbar {
+    border-bottom: #ddd solid 2px;
+    background-color: #222;
+}
+
+button.navbar {
     background-color: inherit;
     border-style: hidden;
     padding: 10px 15px;
@@ -17,6 +32,6 @@ button {
     color: inherit;
 }
 
-button:hover {
-    background-color: #333;
+button.navbar:hover {
+    background-color: #444;
 }
