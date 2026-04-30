@@ -28,14 +28,7 @@ class Fractal {
     constructor (name, algorithm, options) {
         this.algorithm = algorithm; // Function taking x and y values and returning a number representing iterations.
         this.options = options; // Option() data type
-        this.button = document.createElement("button");
-        this.button.innerHTML = name;
-        this.button.id = "button" + name;
-        this.button.addEventListener("click", () => { // Only using this to preserve this's reference to the object
-            document.getElementById("options").innerHTML = "";
-            document.getElementById("options").appendChild(this.form);
-        });
-        this.form = function () {
+        let form = function () {
             // <box><labels><inputs><buttons></box>
             let box = document.createElement("div");
             let labels = document.createElement("div");
@@ -44,27 +37,36 @@ class Fractal {
             labels.style.display = "inline-block";
             inputs.style.display = "inline-block";
             buttons.style.display = "inline-block";
+            labels.style.marginRight = "10px";
+            inputs.style.marginRight = "10px";
+            buttons.style.marginRight = "10px";
             box.appendChild(labels);
             box.appendChild(inputs);
             box.appendChild(buttons);
-            for (var i of this.options) {
+            for (var i of options) {
                 let para = document.createElement("p");
-                para.innerText = i.name;
+                para.innerHTML = i.name;
                 labels.appendChild(para);
+                let p = document.createElement("p");
                 let input = document.createElement("input");
                 input.type = i.type;
                 input.id = i.id;
-                inputs.appendChild(input);
+                input.value = i.def;
+                p.appendChild(input);
+                inputs.appendChild(p);
                 if (i.type === "number") {
                     let randomBtn = document.createElement("button");
                     randomBtn.innerHTML = "Random";
+                    randomBtn.className = "opts";
+                    randomBtn.id = "RNG" + i.id;
                     randomBtn.addEventListener("click", function () {
-                        document.getElementById(i.id).value = (Math.random() * (i.bounds[1] - i.bounds[0])) + i.bounds[0];
+                        console.log(i);
+                        document.getElementById(this.id.slice(3)).value = (Math.random() * (i.bounds[1] - i.bounds[0])) + i.bounds[0];
                     });
                     let p = document.createElement("p");
                     p.appendChild(randomBtn);
                     buttons.appendChild(p);
-                    document.getElementById(i.id).addEventListener("change", function () {
+                    input.addEventListener("change", function () {
                         if (this.value > i.bounds[1]) {
                             this.value = i.bounds[1];
                         } else if (this.value < i.bounds[0]) {
@@ -76,15 +78,28 @@ class Fractal {
                     p.innerHTML = "&nbsp;";
                     buttons.appendChild(p);
                 };
-                document.getElementById(i.id).value = i.def;
             };
             let applyBtn = document.createElement("button");
             let resetBtn = document.createElement("button");
             applyBtn.innerHTML = "Apply Settings";
             resetBtn.innerHTML = "Reset";
+            applyBtn.className = "opts";
+            resetBtn.className = "opts";
+            box.appendChild(document.createElement("br"));
             box.appendChild(applyBtn);
             box.appendChild(resetBtn);
             return box;
+        } ();
+        this.button = function () { // Done to group similar commands. to avoid clutter. etc.
+            let btn = document.createElement("button");
+            btn.innerHTML = name[0];
+            btn.id = "button" + name[1];
+            btn.addEventListener("click", () => { // Only using this to preserve this's reference to the object
+                document.getElementById("options").innerHTML = "";
+                document.getElementById("options").appendChild(form);
+            });
+            btn.className = "navbar";
+            return btn;
         } ();
     };
 
@@ -106,6 +121,15 @@ class Fractal {
     };
 };
 
+// -- Function -- //
+
+function vsep (width = "2px", pc = "50%") {
+    vesp = document.createElement("div");
+    vesp.style.width = "0px"; vesp.style.border = "#ddd solid " + width; vesp.style.height = pc;
+
+    return vesp;
+}
+
 // -- Variables -- //
 
 var canvas = document.getElementById("image");
@@ -114,7 +138,7 @@ canvas.height = Math.floor(canvas.width * (5 / 6));
 canvas.style.marginTop = "10px";
 
 fractals = [
-    new Fractal("Mandelbrot Set", "mandelbrot", function (x, y, o) {
+    new Fractal(["Mandelbrot Set", "mandelbrot"], function (x, y, o) {
         // [-2, 1], [-1.25, 1.25], o = options
         // what should go in each slot? difficult question. must be scaled to the bounds. percent in canvas = x / canvas.width. * 1 - (-2) = * 3, -2 because starts there. same for y but 1.25 - (-1.25) = * 2.5, -1.25
         // And Now To Add In Scaling! zoom exists as a % sooo. multiplier if 200% should be 0.5. *(1 /z) z = zoom
@@ -126,13 +150,33 @@ fractals = [
             a = a1;
             iter += 1;
         }; // Unintentional obfuscation = WWW
-        return iter;
+        return (iter < maxIters) ? iter : -1;
     }, [
         new Opt("number", "z", "Zoom (%)", 1, [1, Infinity]),
-        new Opt("number", "d", "Multibrot Power", 2, [0, 10])
+        new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
     ]),
-    new Fractal("Julia Set", "julia", function () {}, []),
-    new Fractal("Burning Ship", "bship", function () {}, [])
+    new Fractal(["Julia Set", "julia"], function (x, y, o) {
+        // o.z = zoom, o.n is similar to o.d for mandebrot, o.cx and o.cy are a complex number.
+        let R = 0; // escape radius. equal to the 4 in "<= 4" of mandelbrot. since thats actually 2^2
+        while (R <= 0 || (Math.pow(R, o.n) - R) < Math.sqrt(Math.pow(o.cx, 2) + Math.pow(o.cy, 2))) {
+            R += 0.1;
+        let point = Complex((((x / canvas.width) * R * 2) - R) * (1 / o.z), (((y / canvas.height) * R * 2) - R) * (1 / o.z));
+        };
+        let iter = 0; let maxIters = 100;
+        while (Math.pow(point.re, 2) + Math.pow(point.im, 2) < Math.pow(R, 2) && iter < maxIters) {
+            let a = Math.pow(Math.pow(point.re, 2) + Math.pow(point.im, 2), o.n / 2) * Math.cos(o.n * Math.atan2(point.im, point.re)) + o.cx;
+            point.im = Math.pow(Math.pow(point.re, 2) + Math.pow(point.im, 2), o.n / 2) * Math.sin(o.n * Math.atan2(point.im, point.re)) + o.cy;
+            point.re = a;
+            iter += 1;
+        };
+        return (iter < maxIters) ? iter : -1;
+    }, [
+        new Opt("number", "z", "Zoom (%)", 1, [1, Infinity]),
+        new Opt("number", "n", "Multijulia Degree", 2, [0.1, 10]),
+        new Opt("number", "cx", "Real Part of c", -0.5, [-2, 0.25]),
+        new Opt("number", "cy", "Imaginary Part of c", 0.5, [-1, 1])
+    ]),
+//    new Fractal("Burning Ship", "bship", function () {}, [])
 ];
 
 // -- Functionality -- //

@@ -16,22 +16,41 @@ canvas {
     align-self: center;
 }
 
+button {
+    background-color: inherit;
+    color: inherit;
+    font-family: inherit;
+}
+
+input {
+    background-color: inherit;
+    color: inherit;
+    font-family: inherit;
+    border: #ddd solid 1px;
+}
+
 /* -- Classes & Pseudoclasses -- */
 
 div.navbar {
     border-bottom: #ddd solid 2px;
-    background-color: #222;
 }
 
 button.navbar {
-    background-color: inherit;
+    background-color: #222;
     border-style: hidden;
     padding: 10px 15px;
-    font-family: inherit;
     font-weight: bold;
-    color: inherit;
+}
+
+button.opts {
+    border: #ddd solid 1px;
+    margin-right: 5px;
 }
 
 button.navbar:hover {
     background-color: #444;
+}
+
+button.opts:hover {
+    background-color: #333;
 }
