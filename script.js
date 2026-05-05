@@ -1,5 +1,7 @@
 // Created by Looty9397
 
+// -- Dependencies -- //
+
 // -- Classes -- //
 
 class Color {
@@ -10,7 +12,7 @@ class Color {
     };
 
     intermediate (percent, col2) {
-        return new Color(Math.floor((percent * this.red) + ((1 - percent) * col2.red)), Math.floor((percent * this.green) + ((1 - percent) * col2.green)), Math.floor((percent * this.blue) + ((1 - percent) * col2.blue)));
+        return new new Color(Math.floor((percent * this.red) + ((1 - percent) * col2.red)), Math.floor((percent * this.green) + ((1 - percent) * col2.green)), Math.floor((percent * this.blue) + ((1 - percent) * col2.blue)));
     };
 };
 
@@ -26,8 +28,7 @@ class Opt {
 
 class Fractal {
     constructor (name, algorithm, options) {
-        this.algorithm = algorithm; // Function taking x and y values and returning a number representing iterations.
-        this.options = options; // Option() data type
+        this.options = options;
         let form = function () {
             // <box><labels><inputs><buttons></box>
             let box = document.createElement("div");
@@ -40,6 +41,7 @@ class Fractal {
             labels.style.marginRight = "10px";
             inputs.style.marginRight = "10px";
             buttons.style.marginRight = "10px";
+            labels.className = "label";
             box.appendChild(labels);
             box.appendChild(inputs);
             box.appendChild(buttons);
@@ -79,7 +81,36 @@ class Fractal {
                     buttons.appendChild(p);
                 };
             };
+            let para = document.createElement("p");
+            para.innerHTML = "Color Palette";
+            labels.appendChild(para);
+            let p = document.createElement("p");
+            p.appendChild(palette());
+            inputs.appendChild(p);
+            let ph = document.createElement("p");
+            ph.innerHTML = "&nbsp;";
+            buttons.appendChild(ph);
             let applyBtn = document.createElement("button");
+            applyBtn.addEventListener("click", function () {
+                let ctx = canvas.getContext("2d");
+                for (let x = 0; x < canvas.width; x++) {
+                    for (let y = 0; y < canvas.height; y++) {
+                        let opts = {};
+                        for (var i of options) {
+                            opts[i.id] = document.getElementById(i.id).value;
+                        };
+                        let iter = algorithm(x, y, opts);
+                        // Color determination: loop of 60 iters, every 10 reaches next color
+                        // If in between (i.e. 13), then take intermediate. col.intermediate(etc etc)
+                        let pal = document.getElementById("palette");
+                        let col = palettes[pal.value][Math.floor((iter % 60) / 10)]; console.log(col);
+                        pixCol = col.intermediate((iter % 10) / 10, (Math.floor((iter % 60) / 10) !== palettes[pal.value].length - 1) ? palettes[pal.value][Math.floor((iter % 60) / 10) + 1] : 0);
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + 1, y);
+                        ctx.stroke();
+                    };
+                };
+            });
             let resetBtn = document.createElement("button");
             applyBtn.innerHTML = "Apply Settings";
             resetBtn.innerHTML = "Reset";
@@ -102,33 +133,21 @@ class Fractal {
             return btn;
         } ();
     };
-
-    render () {
-        ctx = canvas.getContext("2d");
-        for (let x = 0; x < canvas.width; x++) {
-            for (let y = 0; y < canvas.height; y++) {
-                iter = this.algorithm(x, y, this.getOpts());
-            };
-        };
-    };
-
-    getOpts () {
-        opts = {};
-        for (var i of this.options) {
-            opts[i.id] = document.getElementById(i.id).value;
-        };
-        return opts;
-    };
 };
 
-// -- Function -- //
+// -- Functions -- //
 
-function vsep (width = "2px", pc = "50%") {
-    vesp = document.createElement("div");
-    vesp.style.width = "0px"; vesp.style.border = "#ddd solid " + width; vesp.style.height = pc;
-
-    return vesp;
-}
+function palette () {
+    let pal = document.createElement("select");
+    pal.id = "palette";
+    for (let i = 0; i < palettes.length; i++) {
+        let j = document.createElement("option");
+        j.value = i;
+        j.innerHTML = palettes[i][0];
+        pal.appendChild(j);
+    };
+    return pal;
+};
 
 // -- Variables -- //
 
@@ -137,8 +156,14 @@ canvas.width = Math.floor(window.innerWidth * 0.5);
 canvas.height = Math.floor(canvas.width * (5 / 6));
 canvas.style.marginTop = "10px";
 
+var palettes = [
+    ["Default", new Color(255, 0, 0), new Color(255, 255, 0), new Color(0, 255, 0), new Color(0, 255, 255), new Color(0, 0, 255), new Color(255, 0, 255)],
+    ["Muted", new Color(192, 64, 64), new Color(192, 192, 64), new Color(64, 192, 64), new Color(64, 192, 192), new Color(64, 64, 192), new Color(192, 64, 192)]
+];
+
 fractals = [
     new Fractal(["Mandelbrot Set", "mandelbrot"], function (x, y, o) {
+        o.z = o.z / 100;
         // [-2, 1], [-1.25, 1.25], o = options
         // what should go in each slot? difficult question. must be scaled to the bounds. percent in canvas = x / canvas.width. * 1 - (-2) = * 3, -2 because starts there. same for y but 1.25 - (-1.25) = * 2.5, -1.25
         // And Now To Add In Scaling! zoom exists as a % sooo. multiplier if 200% should be 0.5. *(1 /z) z = zoom
@@ -156,6 +181,7 @@ fractals = [
         new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
     ]),
     new Fractal(["Julia Set", "julia"], function (x, y, o) {
+        o.z = o.z / 100;
         // o.z = zoom, o.n is similar to o.d for mandebrot, o.cx and o.cy are a complex number.
         let R = 0; // escape radius. equal to the 4 in "<= 4" of mandelbrot. since thats actually 2^2
         while (R <= 0 || (Math.pow(R, o.n) - R) < Math.sqrt(Math.pow(o.cx, 2) + Math.pow(o.cy, 2))) {
@@ -176,12 +202,16 @@ fractals = [
         new Opt("number", "cx", "Real Part of c", -0.5, [-2, 0.25]),
         new Opt("number", "cy", "Imaginary Part of c", 0.5, [-1, 1])
     ]),
-//    new Fractal("Burning Ship", "bship", function () {}, [])
+    new Fractal(["Burning Ship", "bship"], function () {
+
+    }, [
+
+    ])
 ];
 
 // -- Functionality -- //
 
 for (var i of fractals) {
     document.getElementById("navbar").appendChild(i.button);
-    i.button.style.width = Math.floor((1 / fractals.length) * 100) + "%";
+    i.button.style.width = (1 / fractals.length) * 100 + "%";
 };

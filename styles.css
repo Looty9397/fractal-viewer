@@ -29,10 +29,22 @@ input {
     border: #ddd solid 1px;
 }
 
+select {
+    background-color: #ddd;
+    color: #111;
+    font-family: inherit;
+    border: none;
+    width: 100%;
+}
+
 /* -- Classes & Pseudoclasses -- */
 
 div.navbar {
     border-bottom: #ddd solid 2px;
+}
+
+div.label {
+    text-align: left;
 }
 
 button.navbar {
