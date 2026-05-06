@@ -9,11 +9,14 @@ class Color {
         this.red = Math.floor((0 <= red) ? ((255 >= red) ? red : 255) : 0);
         this.green =  Math.floor((0 <= green) ? ((255 >= green) ? green : 255) : 0);
         this.blue =  Math.floor((0 <= blue) ? ((255 >= blue) ? blue : 255) : 0);
+        this.rgb = "rgb(" + this.red.toString() + ", " + this.green.toString() + ", " + this.blue.toString() + ")";
+        this.hex = "#" + hexByte(this.red) + hexByte(this.green) + hexByte(this.blue);
     };
 
-    intermediate (percent, col2) {
-        return new new Color(Math.floor((percent * this.red) + ((1 - percent) * col2.red)), Math.floor((percent * this.green) + ((1 - percent) * col2.green)), Math.floor((percent * this.blue) + ((1 - percent) * col2.blue)));
+    inter (percent, col2) {
+        return new Color(Math.floor((percent * col2.red) + ((1 - percent) * this.red)), Math.floor((percent * col2.green) + ((1 - percent) * this.green)), Math.floor((percent * col2.blue) + ((1 - percent) * this.blue)));
     };
+
 };
 
 class Opt {
@@ -57,22 +60,22 @@ class Fractal {
                 p.appendChild(input);
                 inputs.appendChild(p);
                 if (i.type === "number") {
+                    let bounds = i.bounds;
                     let randomBtn = document.createElement("button");
                     randomBtn.innerHTML = "Random";
                     randomBtn.className = "opts";
                     randomBtn.id = "RNG" + i.id;
                     randomBtn.addEventListener("click", function () {
-                        console.log(i);
-                        document.getElementById(this.id.slice(3)).value = (Math.random() * (i.bounds[1] - i.bounds[0])) + i.bounds[0];
+                        document.getElementById(this.id.slice(3)).value = (Math.random() * (bounds[1] - bounds[0])) + bounds[0];
                     });
                     let p = document.createElement("p");
                     p.appendChild(randomBtn);
                     buttons.appendChild(p);
                     input.addEventListener("change", function () {
-                        if (this.value > i.bounds[1]) {
-                            this.value = i.bounds[1];
-                        } else if (this.value < i.bounds[0]) {
-                            this.value = i.bounds[0]
+                        if (this.value > bounds[1]) {
+                            this.value = bounds[1];
+                        } else if (this.value < bounds[0]) {
+                            this.value = bounds[0]
                         };
                     });
                 } else {
@@ -92,24 +95,7 @@ class Fractal {
             buttons.appendChild(ph);
             let applyBtn = document.createElement("button");
             applyBtn.addEventListener("click", function () {
-                let ctx = canvas.getContext("2d");
-                for (let x = 0; x < canvas.width; x++) {
-                    for (let y = 0; y < canvas.height; y++) {
-                        let opts = {};
-                        for (var i of options) {
-                            opts[i.id] = document.getElementById(i.id).value;
-                        };
-                        let iter = algorithm(x, y, opts);
-                        // Color determination: loop of 60 iters, every 10 reaches next color
-                        // If in between (i.e. 13), then take intermediate. col.intermediate(etc etc)
-                        let pal = document.getElementById("palette");
-                        let col = palettes[pal.value][Math.floor((iter % 60) / 10)]; console.log(col);
-                        pixCol = col.intermediate((iter % 10) / 10, (Math.floor((iter % 60) / 10) !== palettes[pal.value].length - 1) ? palettes[pal.value][Math.floor((iter % 60) / 10) + 1] : 0);
-                        ctx.moveTo(x, y);
-                        ctx.lineTo(x + 1, y);
-                        ctx.stroke();
-                    };
-                };
+                draw(options, algorithm);
             });
             let resetBtn = document.createElement("button");
             applyBtn.innerHTML = "Apply Settings";
@@ -140,25 +126,78 @@ class Fractal {
 function palette () {
     let pal = document.createElement("select");
     pal.id = "palette";
-    for (let i = 0; i < palettes.length; i++) {
+    for (let i = 0; i <palettes.length; i++) {
         let j = document.createElement("option");
         j.value = i;
-        j.innerHTML = palettes[i][0];
+        j.innerHTML = palettes[i].name;
         pal.appendChild(j);
     };
     return pal;
 };
 
+function hexByte (value) {
+    value = value.toString(16);
+    if (value.length === 1) {
+        value = "0" + value;
+    };
+    return value;
+};
+
+function draw (options, algorithm) {
+    let ctx = canvas.getContext("2d");
+    for (let x = 0; x < canvas.width / 4; x++) {
+        for (let y = 0; y < canvas.height / 4; y++) {
+            let opts = {};
+            for (var i of options) {
+                opts[i.id] = document.getElementById(i.id).value;
+            };
+            let iter = algorithm(x * 4, y * 4, opts);
+            // Color determination: loop of 60 iters, every 10 reaches next color
+            // If in between (i.e. 13), then take inter. col.inter(etc etc)
+            let pixCol;
+            if (iter >= 0) {
+                let pal = document.getElementById("palette");
+                let col = palettes[Number(pal.value)]["cols"][Math.floor((iter % 60) / 10)];
+                pixCol = col.inter((iter % 10) / 10, palettes[pal.value]["cols"][(Math.floor((iter % 60) / 10) !== palettes[pal.value]["cols"].length - 1) ? Math.floor((iter % 60) / 10) + 1 : 0]);
+            } else {
+                pixCol = new Color(0, 0, 0);
+            };
+            ctx.fillStyle = pixCol.hex;
+            ctx.fillRect(x * 4, y * 4, 4, 4);
+        };
+    };
+};
+
 // -- Variables -- //
 
 var canvas = document.getElementById("image");
-canvas.width = Math.floor(window.innerWidth * 0.5);
-canvas.height = Math.floor(canvas.width * (5 / 6));
+canvas.width = Math.floor(window.innerWidth * 0.125) * 4;
+canvas.height = Math.floor(canvas.width * ((5 / 4) / 6)) * 4;
 canvas.style.marginTop = "10px";
 
 var palettes = [
-    ["Default", new Color(255, 0, 0), new Color(255, 255, 0), new Color(0, 255, 0), new Color(0, 255, 255), new Color(0, 0, 255), new Color(255, 0, 255)],
-    ["Muted", new Color(192, 64, 64), new Color(192, 192, 64), new Color(64, 192, 64), new Color(64, 192, 192), new Color(64, 64, 192), new Color(192, 64, 192)]
+    {
+        "name": "Default",
+        "cols": [
+            new Color(255, 0, 0),
+            new Color(255, 255, 0),
+            new Color(0, 255, 0),
+            new Color(0, 255, 255),
+            new Color(0, 0, 255),
+            new Color(255, 0, 255)
+        ]
+    },
+    {
+        "name": "Muted",
+        "cols": [
+            new Color(192, 64, 64),
+            new Color(192, 192, 64),
+            new Color(64, 192, 64),
+            new Color(64, 192, 192),
+            new Color(64, 64, 192),
+            new Color(192, 64, 192)
+        ]
+    }
 ];
 
 fractals = [
@@ -177,7 +216,7 @@ fractals = [
         }; // Unintentional obfuscation = WWW
         return (iter < maxIters) ? iter : -1;
     }, [
-        new Opt("number", "z", "Zoom (%)", 1, [1, Infinity]),
+        new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
         new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
     ]),
     new Fractal(["Julia Set", "julia"], function (x, y, o) {
@@ -186,8 +225,8 @@ fractals = [
         let R = 0; // escape radius. equal to the 4 in "<= 4" of mandelbrot. since thats actually 2^2
         while (R <= 0 || (Math.pow(R, o.n) - R) < Math.sqrt(Math.pow(o.cx, 2) + Math.pow(o.cy, 2))) {
             R += 0.1;
-        let point = Complex((((x / canvas.width) * R * 2) - R) * (1 / o.z), (((y / canvas.height) * R * 2) - R) * (1 / o.z));
         };
+        let point = Complex((((x / canvas.width) * R * 2) - R) * (1 / o.z), (((y / canvas.height) * R * 2) - R) * (1 / o.z));
         let iter = 0; let maxIters = 100;
         while (Math.pow(point.re, 2) + Math.pow(point.im, 2) < Math.pow(R, 2) && iter < maxIters) {
             let a = Math.pow(Math.pow(point.re, 2) + Math.pow(point.im, 2), o.n / 2) * Math.cos(o.n * Math.atan2(point.im, point.re)) + o.cx;
@@ -197,7 +236,7 @@ fractals = [
         };
         return (iter < maxIters) ? iter : -1;
     }, [
-        new Opt("number", "z", "Zoom (%)", 1, [1, Infinity]),
+        new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
         new Opt("number", "n", "Multijulia Degree", 2, [0.1, 10]),
         new Opt("number", "cx", "Real Part of c", -0.5, [-2, 0.25]),
         new Opt("number", "cy", "Imaginary Part of c", 0.5, [-1, 1])
