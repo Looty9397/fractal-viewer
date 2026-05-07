@@ -30,7 +30,7 @@ class Opt {
 };
 
 class Fractal {
-    constructor (name, algorithm, options) {
+    constructor (name, algorithm, options, bonds) {
         this.options = options;
         let form = function () {
             // <box><labels><inputs><buttons></box>
@@ -57,6 +57,9 @@ class Fractal {
                 input.type = i.type;
                 input.id = i.id;
                 input.value = i.def;
+                input.addEventListener("change", function () {
+                    draw(options, algorithm);
+                });
                 p.appendChild(input);
                 inputs.appendChild(p);
                 if (i.type === "number") {
@@ -67,6 +70,7 @@ class Fractal {
                     randomBtn.id = "RNG" + i.id;
                     randomBtn.addEventListener("click", function () {
                         document.getElementById(this.id.slice(3)).value = (Math.random() * (bounds[1] - bounds[0])) + bounds[0];
+                        draw(options, algorithm);
                     });
                     let p = document.createElement("p");
                     p.appendChild(randomBtn);
@@ -84,6 +88,7 @@ class Fractal {
                     buttons.appendChild(p);
                 };
             };
+            // Palette box
             let para = document.createElement("p");
             para.innerHTML = "Color Palette";
             labels.appendChild(para);
@@ -91,20 +96,23 @@ class Fractal {
             p.appendChild(palette());
             inputs.appendChild(p);
             let ph = document.createElement("p");
-            ph.innerHTML = "&nbsp;";
-            buttons.appendChild(ph);
-            let applyBtn = document.createElement("button");
-            applyBtn.addEventListener("click", function () {
+            let resetBtn = document.createElement("button");
+            resetBtn.innerHTML = "Reset";
+            resetBtn.className = "opts";
+            resetBtn.addEventListener("click", function () {
+                for (var i of options) {
+                    document.getElementById(i.id).value = i.def;
+                };
                 draw(options, algorithm);
             });
-            let resetBtn = document.createElement("button");
-            applyBtn.innerHTML = "Apply Settings";
-            resetBtn.innerHTML = "Reset";
-            applyBtn.className = "opts";
-            resetBtn.className = "opts";
+            ph.appendChild(resetBtn);
+            buttons.appendChild(ph);
             box.appendChild(document.createElement("br"));
-            box.appendChild(applyBtn);
-            box.appendChild(resetBtn);
+            canvas.addEventListener("click", function () {
+                let rect = canvas.getBoundingClientRect();
+                center = [Math.floor(event.clientX - rect.left - (this.width / 2)), Math.floor(event.clientY - rect.top - (this.height / 2))];
+                draw(options, algorithm);
+            });
             return box;
         } ();
         this.button = function () { // Done to group similar commands. to avoid clutter. etc.
@@ -114,6 +122,7 @@ class Fractal {
             btn.addEventListener("click", () => { // Only using this to preserve this's reference to the object
                 document.getElementById("options").innerHTML = "";
                 document.getElementById("options").appendChild(form);
+                draw(options, algorithm);
             });
             btn.className = "navbar";
             return btn;
@@ -175,6 +184,8 @@ canvas.width = Math.floor(window.innerWidth * 0.125) * 4;
 canvas.height = Math.floor(canvas.width * ((5 / 4) / 6)) * 4;
 canvas.style.marginTop = "10px";
 
+var center = [0, 0];
+
 var palettes = [
     {
         "name": "Default",
@@ -206,7 +217,7 @@ fractals = [
         // [-2, 1], [-1.25, 1.25], o = options
         // what should go in each slot? difficult question. must be scaled to the bounds. percent in canvas = x / canvas.width. * 1 - (-2) = * 3, -2 because starts there. same for y but 1.25 - (-1.25) = * 2.5, -1.25
         // And Now To Add In Scaling! zoom exists as a % sooo. multiplier if 200% should be 0.5. *(1 /z) z = zoom
-        let point = Complex((((x / canvas.width) * 3) - 2) * (1 / o.z), (((y / canvas.height) * 2.5) - 1.25) * (1 / o.z));
+        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) * (1 / o.z), ((((y + center[1]) / canvas.height) * 2.5) - 1.25) * (1 / o.z));
         let a = 0; let b = 0; let iter = 0; let maxIters = 100; // a number; scaled by the zoom level for performance
         while (Math.pow(a, o.d) + Math.pow(b, o.d) <= 4 && iter < maxIters) {
             let a1 = Math.pow(a, o.d) - Math.pow(b, o.d) + point.re;
@@ -218,34 +229,22 @@ fractals = [
     }, [
         new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
         new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
-    ]),
-    new Fractal(["Julia Set", "julia"], function (x, y, o) {
+    ], [[-2, 1], [-1.25, 1.25]]),
+    new Fractal(["Burning Ship Fractal", "bship"], function (x, y, o) {
         o.z = o.z / 100;
-        // o.z = zoom, o.n is similar to o.d for mandebrot, o.cx and o.cy are a complex number.
-        let R = 0; // escape radius. equal to the 4 in "<= 4" of mandelbrot. since thats actually 2^2
-        while (R <= 0 || (Math.pow(R, o.n) - R) < Math.sqrt(Math.pow(o.cx, 2) + Math.pow(o.cy, 2))) {
-            R += 0.1;
-        };
-        let point = Complex((((x / canvas.width) * R * 2) - R) * (1 / o.z), (((y / canvas.height) * R * 2) - R) * (1 / o.z));
-        let iter = 0; let maxIters = 100;
-        while (Math.pow(point.re, 2) + Math.pow(point.im, 2) < Math.pow(R, 2) && iter < maxIters) {
-            let a = Math.pow(Math.pow(point.re, 2) + Math.pow(point.im, 2), o.n / 2) * Math.cos(o.n * Math.atan2(point.im, point.re)) + o.cx;
-            point.im = Math.pow(Math.pow(point.re, 2) + Math.pow(point.im, 2), o.n / 2) * Math.sin(o.n * Math.atan2(point.im, point.re)) + o.cy;
-            point.re = a;
+        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) * (1 / o.z), ((((y + center[1]) / canvas.height) * 2.5) - 1.25) * (1 / o.z));
+        let a = 0; let b = 0; let iter = 0; let maxIters = 100; // a number; scaled by the zoom level for performance
+        while (Math.pow(a, o.d) + Math.pow(b, o.d) <= 4 && iter < maxIters) {
+            let a1 = Math.pow(a, o.d) - Math.pow(b, o.d) + point.re;
+            b = Math.abs(2 * a * b) + point.im;
+            a = a1;
             iter += 1;
-        };
+        }; // Unintentional obfuscation = WWW
         return (iter < maxIters) ? iter : -1;
     }, [
         new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
-        new Opt("number", "n", "Multijulia Degree", 2, [0.1, 10]),
-        new Opt("number", "cx", "Real Part of c", -0.5, [-2, 0.25]),
-        new Opt("number", "cy", "Imaginary Part of c", 0.5, [-1, 1])
-    ]),
-    new Fractal(["Burning Ship", "bship"], function () {
-
-    }, [
-
-    ])
+        new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
+    ], [[-2, 1], [-1.25, 1.25]])
 ];
 
 // -- Functionality -- //

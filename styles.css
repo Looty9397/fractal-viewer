@@ -57,6 +57,7 @@ button.navbar {
 button.opts {
     border: #ddd solid 1px;
     margin-right: 5px;
+    width: 100%;
 }
 
 button.navbar:hover {
@@ -65,4 +66,8 @@ button.navbar:hover {
 
 button.opts:hover {
     background-color: #333;
+}
+
+input.coords {
+    width: 57px;
 }
