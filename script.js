@@ -31,6 +31,7 @@ class Opt {
 
 class Fractal {
     constructor (name, algorithm, options, bonds) {
+        this.algorithm = algorithm;
         this.options = options;
         let form = function () {
             // <box><labels><inputs><buttons></box>
@@ -58,7 +59,7 @@ class Fractal {
                 input.id = i.id;
                 input.value = i.def;
                 input.addEventListener("change", function () {
-                    draw(options, algorithm);
+                    draw(opts, algo);
                 });
                 p.appendChild(input);
                 inputs.appendChild(p);
@@ -70,7 +71,7 @@ class Fractal {
                     randomBtn.id = "RNG" + i.id;
                     randomBtn.addEventListener("click", function () {
                         document.getElementById(this.id.slice(3)).value = (Math.random() * (bounds[1] - bounds[0])) + bounds[0];
-                        draw(options, algorithm);
+                        draw(opts, algo);
                     });
                     let p = document.createElement("p");
                     p.appendChild(randomBtn);
@@ -82,6 +83,20 @@ class Fractal {
                             this.value = bounds[0]
                         };
                     });
+                } else if (i.type === "range") {
+                    let bounds = i.bounds;
+                    input.min = bounds[0]; input.max = bounds[1];
+                    let randomBtn = document.createElement("button");
+                    randomBtn.innerHTML = "Random";
+                    randomBtn.className = "opts";
+                    randomBtn.id = "RNG" + i.id;
+                    randomBtn.addEventListener("click", function () {
+                        document.getElementById(this.id.slice(3)).value = (Math.random() * (bounds[1] - bounds[0])) + bounds[0];
+                        draw(opts, algo);
+                    });
+                    let p = document.createElement("p");
+                    p.appendChild(randomBtn);
+                    buttons.appendChild(p);
                 } else {
                     let p = document.createElement("p");
                     p.innerHTML = "&nbsp;";
@@ -103,30 +118,27 @@ class Fractal {
                 for (var i of options) {
                     document.getElementById(i.id).value = i.def;
                 };
-                draw(options, algorithm);
+                center = [0, 0];
+                draw(opts, algo);
             });
             ph.appendChild(resetBtn);
             buttons.appendChild(ph);
             box.appendChild(document.createElement("br"));
-            canvas.addEventListener("click", function () {
-                let rect = canvas.getBoundingClientRect();
-                center = [Math.floor(event.clientX - rect.left - (this.width / 2)), Math.floor(event.clientY - rect.top - (this.height / 2))];
-                draw(options, algorithm);
-            });
             return box;
         } ();
-        this.button = function () { // Done to group similar commands. to avoid clutter. etc.
+        this.button = function (obj) { // Done to group similar commands. to avoid clutter. etc.
             let btn = document.createElement("button");
             btn.innerHTML = name[0];
             btn.id = "button" + name[1];
             btn.addEventListener("click", () => { // Only using this to preserve this's reference to the object
                 document.getElementById("options").innerHTML = "";
                 document.getElementById("options").appendChild(form);
-                draw(options, algorithm);
+                opts = obj.options; algo = obj.algorithm;
+                draw(opts, algo);
             });
             btn.className = "navbar";
             return btn;
-        } ();
+        } (this);
     };
 };
 
@@ -154,13 +166,13 @@ function hexByte (value) {
 
 function draw (options, algorithm) {
     let ctx = canvas.getContext("2d");
-    for (let x = 0; x < canvas.width / 4; x++) {
-        for (let y = 0; y < canvas.height / 4; y++) {
+    for (let x = 0; x < canvas.width / res; x++) {
+        for (let y = 0; y < canvas.height / res; y++) {
             let opts = {};
             for (var i of options) {
                 opts[i.id] = document.getElementById(i.id).value;
             };
-            let iter = algorithm(x * 4, y * 4, opts);
+            let iter = algorithm(x * res, y * res, opts);
             // Color determination: loop of 60 iters, every 10 reaches next color
             // If in between (i.e. 13), then take inter. col.inter(etc etc)
             let pixCol;
@@ -172,19 +184,30 @@ function draw (options, algorithm) {
                 pixCol = new Color(0, 0, 0);
             };
             ctx.fillStyle = pixCol.hex;
-            ctx.fillRect(x * 4, y * 4, 4, 4);
+            ctx.fillRect(x * res, y * res, res, res);
         };
     };
 };
 
 // -- Variables -- //
 
+var res = 2;
+
 var canvas = document.getElementById("image");
-canvas.width = Math.floor(window.innerWidth * 0.125) * 4;
-canvas.height = Math.floor(canvas.width * ((5 / 4) / 6)) * 4;
+canvas.width = Math.floor(window.innerWidth * (0.5 / res)) * res;
+canvas.height = Math.floor(canvas.width * ((5 / res) / 6)) * res;
 canvas.style.marginTop = "10px";
+canvas.addEventListener("click", function () {
+    let rect = canvas.getBoundingClientRect();
+    center = [
+        center[0] + ((event.clientX - rect.left - (canvas.width / 2))),
+        center[1] + ((event.clientY - rect.top - (canvas.height / 2)))
+    ];
+    draw(opts, algo);
+});
 
 var center = [0, 0];
+var algo; var opts;
 
 var palettes = [
     {
@@ -208,18 +231,42 @@ var palettes = [
             new Color(64, 64, 192),
             new Color(192, 64, 192)
         ]
+    },
+    {
+        "name": "Dim",
+        "cols": [
+            new Color(128, 0, 0),
+            new Color(128, 128, 0),
+            new Color(0, 128, 0),
+            new Color(0, 128, 128),
+            new Color(0, 0, 128),
+            new Color(128, 0, 128)
+        ]
+    },
+    {
+        "name": "Bright",
+        "cols": [
+            new Color(255, 128, 128),
+            new Color(255, 255, 128),
+            new Color(128, 255, 128),
+            new Color(128, 255, 255),
+            new Color(128, 128, 255),
+            new Color(255, 128, 255)
+        ]
     }
 ];
 
-fractals = [
+fractals = [ // It would be nice to get the zoom centered on your chosen center point,
+    // so a zoom on the flames of the Burning Ship wouldn't be at [-41439.0625, -1126.5625] with 100x zoom (10000%)
+    // but I don't even know where to start looking for the thing I'd need to change to make that possible.
     new Fractal(["Mandelbrot Set", "mandelbrot"], function (x, y, o) {
-        o.z = o.z / 100;
+        o.z = Math.pow(1.1, o.z - 1)
         // [-2, 1], [-1.25, 1.25], o = options
         // what should go in each slot? difficult question. must be scaled to the bounds. percent in canvas = x / canvas.width. * 1 - (-2) = * 3, -2 because starts there. same for y but 1.25 - (-1.25) = * 2.5, -1.25
         // And Now To Add In Scaling! zoom exists as a % sooo. multiplier if 200% should be 0.5. *(1 /z) z = zoom
-        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) * (1 / o.z), ((((y + center[1]) / canvas.height) * 2.5) - 1.25) * (1 / o.z));
-        let a = 0; let b = 0; let iter = 0; let maxIters = 100; // a number; scaled by the zoom level for performance
-        while (Math.pow(a, o.d) + Math.pow(b, o.d) <= 4 && iter < maxIters) {
+        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) / o.z, ((((y + center[1]) / canvas.height) * 2.5) - 1.25) / o.z);
+        let a = 0; let b = 0; let iter = 0; let maxIters = 100 * ((o.z < 2) ? o.z : o.z / 2); // a number; scaled by the zoom level for performance
+        while (Math.pow(a, o.d) + Math.pow(b, o.d) <= Math.pow(2, o.d) && iter < maxIters) {
             let a1 = Math.pow(a, o.d) - Math.pow(b, o.d) + point.re;
             b = (2 * a * b) + point.im;
             a = a1;
@@ -227,14 +274,14 @@ fractals = [
         }; // Unintentional obfuscation = WWW
         return (iter < maxIters) ? iter : -1;
     }, [
-        new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
+        new Opt("range", "z", "Zoom (x)", 1, [1, 100]),
         new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
     ], [[-2, 1], [-1.25, 1.25]]),
     new Fractal(["Burning Ship Fractal", "bship"], function (x, y, o) {
-        o.z = o.z / 100;
-        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) * (1 / o.z), ((((y + center[1]) / canvas.height) * 2.5) - 1.25) * (1 / o.z));
+        o.z = Math.pow(1.1, o.z - 1)
+        let point = Complex(((((x + center[0]) / canvas.width) * 3) - 2) / o.z, ((((y + center[1]) / canvas.height) * 2.5) - 1.25) / o.z);
         let a = 0; let b = 0; let iter = 0; let maxIters = 100; // a number; scaled by the zoom level for performance
-        while (Math.pow(a, o.d) + Math.pow(b, o.d) <= 4 && iter < maxIters) {
+        while (Math.pow(a, o.d) + Math.pow(b, o.d) <= Math.pow(2, o.d) && iter < maxIters) {
             let a1 = Math.pow(a, o.d) - Math.pow(b, o.d) + point.re;
             b = Math.abs(2 * a * b) + point.im;
             a = a1;
@@ -242,7 +289,7 @@ fractals = [
         }; // Unintentional obfuscation = WWW
         return (iter < maxIters) ? iter : -1;
     }, [
-        new Opt("number", "z", "Zoom (%)", 100, [100, 10000]),
+        new Opt("range", "z", "Zoom (x)", 1, [1, 100]),
         new Opt("number", "d", "Multibrot Degree", 2, [0.1, 10])
     ], [[-2, 1], [-1.25, 1.25]])
 ];
